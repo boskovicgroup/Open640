@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import sys
+import os
 import platform
 import serial
 import time
@@ -54,6 +55,24 @@ class Open640(QWidget):
 
         self.show()
 
+    def collectData():
+        self.currently_collecting = True
+        try:
+            ser = serial.Serial(
+                    "/dev/ttyAMA0",
+                    baudrate = 19200,
+                    bytesize = serial.SEVENBITS,
+                    parity = serial.PARITY_EVEN,
+                    stopbits = serial.STOPBITS_ONE,
+                    xonxoff = True)
+            data = ser.read(1)
+            output.setPlainText(output.toPlainText() + data_str.decode('ascii'))
+        except serial.SerialException:
+            alert = QMessageBox()
+            alert.setText('Could not open serial port. Ensure /dev/ttyAMA0 exists and is available, then try again.')
+            alert.exec_()
+        return
+
     def onStartButtonClicked(self, output):
         sender = self.sender()
         if not self.currently_collecting:
@@ -62,7 +81,7 @@ class Open640(QWidget):
             try:
                 ser = serial.Serial(
                         "/dev/ttyAMA0",
-                        baudrate = 19200,
+                        baudrate = 9600,
                         bytesize = serial.SEVENBITS,
                         parity = serial.PARITY_EVEN,
                         stopbits = serial.STOPBITS_ONE,

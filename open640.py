@@ -14,7 +14,9 @@ from PyQt5.QtCore import *
 
 class Open640:
     def __init__(self):
-        self.registerDefaultSettings()
+        # Only write a new settings file if one does not exist
+        if not settings.contains("serial/xonxoff"):
+            self.registerDefaultSettings()
 
     def registerDefaultSettings(self):
         settings.beginGroup("serial")
@@ -180,6 +182,7 @@ class MainWindow(QWidget, Open640):
                 "\n\tParity: " + settings.value("serial/parity") +
                 "\n\tStop Bits: " + str(settings.value("serial/stopbits")) +
                 "\n\tFlow Control: " + str(settings.value("serial/xonxoff"))
+            "\n\nRemember that settings are persistent."
         )
 
 if __name__ == '__main__':

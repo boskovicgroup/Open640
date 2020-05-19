@@ -12,10 +12,11 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 
-class Open640(QWidget):
-    currently_collecting = False
-    ser = None
+class SettingsWindow():
+    def __init__(self):
+        pass
 
+class Open640(QWidget):
     def __init__(self):
         super(Open640, self).__init__()
         self.title = 'Open640'
@@ -36,13 +37,15 @@ class Open640(QWidget):
         dataArea.setPlaceholderText("Collected data will appear here for review before it is written to disk.")
 
         settingsButton = QPushButton('Serial Settings', self)
-        
+        settingsButton.setToolTip('Change serial port settings.')
+
         writeButton = QPushButton('Write to File', self)
         writeButton.setToolTip('Write colected data to the disk.')
 
         clearButton = QPushButton('Clear Output', self)
         collectToggle = QPushButton('Start Collection', self)
 
+        settingsButton.clicked.connect(lambda: self.onSettingsButtonClicked())
         collectToggle.clicked.connect(lambda: self.onStartButtonClicked(dataArea))
         writeButton.clicked.connect(lambda: self.onWriteButtonClicked(dataArea))
         clearButton.clicked.connect(lambda: self.onClearOutputClicked(dataArea))
@@ -59,12 +62,12 @@ class Open640(QWidget):
         self.currently_collecting = True
         try:
             ser = serial.Serial(
-                    "/dev/ttyAMA0",
-                    baudrate = 19200,
-                    bytesize = serial.SEVENBITS,
-                    parity = serial.PARITY_EVEN,
-                    stopbits = serial.STOPBITS_ONE,
-                    xonxoff = True)
+                    self.port,
+                    baudrate = self.baudrate,
+                    bytesize = self.bytesize,
+                    parity = self.parity,
+                    stopbits = self.stopbits,
+                    xonxoff = self.xonxoff)
             data = ser.read(1)
             output.setPlainText(output.toPlainText() + data_str.decode('ascii'))
         except serial.SerialException:
@@ -80,12 +83,12 @@ class Open640(QWidget):
             self.currently_collecting = True
             try:
                 ser = serial.Serial(
-                        "/dev/ttyAMA0",
-                        baudrate = 9600,
-                        bytesize = serial.SEVENBITS,
-                        parity = serial.PARITY_EVEN,
-                        stopbits = serial.STOPBITS_ONE,
-                        xonxoff = True)
+                        self.port,
+                        baudrate = self.baudrate,
+                        bytesize = self.bytesize,
+                        parity = self.parity,
+                        stopbits = self.stopbits,
+                        xonxoff = self.xonxoff)
                 print("2")
                 sender.setText('Stop Collection')
                 # Dodgy reimplementation of do-while by copying code
@@ -137,6 +140,18 @@ class Open640(QWidget):
             f = open(filename + '.txt', 'w')
             f.write(widget.toPlainText())
             f.close()
+
+    def onSettingsButtonClicked(self): 
+        pass
+
+    # Default Settings
+    port = "/dev/ttyAMA0"
+    baudrate = 9600
+    bytesize = serial.SEVENBITS
+    parity = serial.PARITY_EVEN
+    stopbits = serial.STOPBITS_ONE
+    xonxoff = True
+    autoclear = False
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

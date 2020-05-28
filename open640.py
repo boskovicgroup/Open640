@@ -248,8 +248,6 @@ class MainWindow(QWidget, Open640):
         layout.setSpacing(10)
         self.setLayout(layout)
 
-        self.threadpool = QThreadPool()
-
         # Widgets
         self.dataArea = QPlainTextEdit()
         self.dataArea.setReadOnly(True)
@@ -293,9 +291,13 @@ class MainWindow(QWidget, Open640):
             self.reader.fail_state.connect(self.onExperimentFailed)
             self.reader.start()
         else:
-            self.collectToggle.setText('Start Collection')
+            alert = QMessageBox()
+            alert.setText('Won\'t start another read thread until current thread finishes.')
+            alert.exec_()
 
     def onExperimentFailed(self):
+        self.collecting = False
+        self.collectToggle.setText('Start Collection')
         alert = QMessageBox()
         alert.setText('Could not open serial port. Ensure /dev/ttyAMA0 exists and is available, then try again.')
         alert.exec_()

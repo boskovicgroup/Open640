@@ -125,6 +125,10 @@ class Reader(QThread):
     def stop(self):
         # Trash Serial Connection
         if self.ser is not None:
+            # Ensure the DU-640's outgoing queue is empty so that it doesn't
+            # jam itself.
+            while (self.ser.inWaiting() > 0):
+                    self.ser.read(1)
             ser.close()
         self.threadactive = False
         self.wait()

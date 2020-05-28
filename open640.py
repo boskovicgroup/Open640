@@ -77,6 +77,58 @@ class Open640:
             return serial.STOPBITS_TWO
         raise ValueError("Stopbits must be 1, 1.5, or 2. We don't know what 1.5 means either.")
 
+class Reader(QThread):
+
+    experimental_data = pyqtSignal(object)
+    fail_state = pyqtSignal(object)
+    ser = None
+
+    def __init__(self):
+        super(Reader, self).__init__()
+
+    @pyqtSlot()
+    def run(self):
+        print("Thread start.")
+        self.collectData()
+        print("Thread end.")
+
+    def collectData(self):
+        try:
+            print("Entered collection method.")
+            # For the purposes of testing multithreading, these are fixed in place.
+            self.ser = serial.Serial(
+                    "/dev/ttyAMA0",
+                    baudrate = 9600,
+                    bytesize = serial.SEVENBITS,
+                    parity = serial.PARITY_EVEN,
+                    stopbits = serial.STOPBITS_ONE,
+                    xonxoff = True)
+            # Dodgy reimplementation of do-while by copying code
+            raw_data = self.ser.read(1)
+            data_str = raw_data.decode('ascii')
+            print(raw_data.decode('ascii'))
+            print("Waiting: " + str(self.ser.inWaiting()))
+            time.sleep(0.01)
+            while True:
+                if(self.ser.inWaiting() > 0):
+                    raw_data = self.ser.read(1)
+                    data_str = data_str + raw_data.decode('ascii')
+                    print("Waiting: " + str(self.ser.inWaiting()))
+                else:
+                    break
+            self.ser.close()
+            self.ser = None
+            self.experimental_data.emit(data_str)
+        except serial.SerialException:
+            self.fail_state.emit(None)
+
+    def stop(self):
+        # Trash Serial Connection
+        if self.ser is not None:
+            ser.close()
+        self.threadactive = False
+        self.wait()
+
 class SettingsWindow(QDialog, Open640):
     def __init__(self):
         super(SettingsWindow, self).__init__()
@@ -179,6 +231,7 @@ class SettingsWindow(QDialog, Open640):
 class MainWindow(QWidget, Open640):
     def __init__(self):
         super(MainWindow, self).__init__()
+        self.collecting = False
         self.title = 'Open640'
         self.width = 800
         self.height = 600
@@ -191,107 +244,67 @@ class MainWindow(QWidget, Open640):
         layout.setSpacing(10)
         self.setLayout(layout)
 
+        self.threadpool = QThreadPool()
+
         # Widgets
-        dataArea = QPlainTextEdit()
-        dataArea.setReadOnly(True)
-        dataArea.setPlaceholderText("Collected data will appear here for review before it is written to disk.")
+        self.dataArea = QPlainTextEdit()
+        self.dataArea.setReadOnly(True)
+        self.dataArea.setPlaceholderText("Collected data will appear here for review before it is written to disk.")
 
-        settingsButton = QPushButton('Serial Settings', self)
-        settingsButton.setToolTip('Change serial port settings.')
+        self.settingsButton = QPushButton('Serial Settings', self)
+        self.settingsButton.setToolTip('Change serial port settings.')
 
-        checkSettingsButton = QPushButton('Dump Settings', self)
-        settingsButton.setToolTip('Print the current settings to the screen.')
+        self.checkSettingsButton = QPushButton('Dump Settings', self)
+        self.settingsButton.setToolTip('Print the current settings to the screen.')
 
-        writeButton = QPushButton('Write to File', self)
-        writeButton.setToolTip('Write colected data to the disk.')
+        self.writeButton = QPushButton('Write to File', self)
+        self.writeButton.setToolTip('Write colected data to the disk.')
 
-        clearButton = QPushButton('Clear Output', self)
-        collectToggle = QPushButton('Start Collection', self)
+        self.clearButton = QPushButton('Clear Output', self)
+        self.collectToggle = QPushButton('Start Collection', self)
 
-        settingsButton.clicked.connect(lambda: self.onSettingsButtonClicked())
-        checkSettingsButton.clicked.connect(lambda: self.onCheckButtonClicked(dataArea))
-        collectToggle.clicked.connect(lambda: self.onStartButtonClicked(dataArea))
-        writeButton.clicked.connect(lambda: self.onWriteButtonClicked(dataArea))
-        clearButton.clicked.connect(lambda: self.onClearOutputClicked(dataArea))
+        self.settingsButton.clicked.connect(lambda: self.onSettingsButtonClicked())
+        self.checkSettingsButton.clicked.connect(lambda: self.onCheckButtonClicked())
+        self.collectToggle.clicked.connect(lambda: self.onStartButtonClicked())
+        self.writeButton.clicked.connect(lambda: self.onWriteButtonClicked())
+        self.clearButton.clicked.connect(lambda: self.onClearOutputClicked())
 
-        layout.addWidget(dataArea, 0, 0, 1, 0)
-        layout.addWidget(settingsButton, 1, 0)
-        layout.addWidget(checkSettingsButton, 1, 1)
-        layout.addWidget(clearButton, 1, 2)
-        layout.addWidget(collectToggle, 1, 3)
-        layout.addWidget(writeButton, 1, 4)
+
+        layout.addWidget(self.dataArea, 0, 0, 1, 0)
+        layout.addWidget(self.settingsButton, 1, 0)
+        layout.addWidget(self.checkSettingsButton, 1, 1)
+        layout.addWidget(self.clearButton, 1, 2)
+        layout.addWidget(self.collectToggle, 1, 3)
+        layout.addWidget(self.writeButton, 1, 4)
 
         self.show()
 
-    def collectData():
-        self.currently_collecting = True
-        try:
-            ser = serial.Serial(
-                settings.value("serial/port"),
-                baudrate = settings.value("serial/baudrate"),
-                bytesize = settings.value("serial/bytesize"),
-                parity = settings.value("serial/parity"),
-                stopbits = settings.value("serial/stopbits"),
-                xonxoff = settings.value("serial/xonxoff"))
-            data = ser.read(1)
-            output.setPlainText(output.toPlainText() + data_str.decode('ascii'))
-        except serial.SerialException:
-            alert = QMessageBox()
-            alert.setText('Could not open serial port. Ensure /dev/ttyAMA0 exists and is available, then try again.')
-            alert.exec_()
-        return
-
-    def onStartButtonClicked(self, output):
-        sender = self.sender()
-        if not self.currently_collecting:
-            print("1")
-            self.currently_collecting = True
-            try:
-                ser = serial.Serial(
-                    settings.value("serial/port"),
-                    baudrate = settings.value("serial/baudrate"),
-                    bytesize = settings.value("serial/bytesize"),
-                    parity = settings.value("serial/parity"),
-                    stopbits = settings.value("serial/stopbits"),
-                    xonxoff = settings.value("serial/xonxoff"))
-                print("2")
-                sender.setText('Stop Collection')
-                # Dodgy reimplementation of do-while by copying code
-                data_str = ser.read(1)
-                print(len(data_str))
-                print(data_str.decode('ascii'))
-                output.setPlainText(output.toPlainText() + data_str.decode('ascii'))
-                print(output.toPlainText())
-                print("Waiting: " + str(ser.inWaiting()))
-                time.sleep(0.01)
-                while True:
-                    if(ser.inWaiting() > 0):
-                        data_str = ser.read(1)
-                        output.setPlainText(output.toPlainText() + data_str.decode('ascii'))
-                        print(output.toPlainText())
-                        print("Waiting: " + str(ser.inWaiting()))
-                    else:
-                        break
-                    print("5")
-                    self.currently_collecting = False
-                    sender.setText('Start Collection')
-            except serial.SerialException:
-                alert = QMessageBox()
-                alert.setText('Could not open serial port. Ensure /dev/ttyAMA0 exists and is available, then try again.')
-                alert.exec_()
+    def onStartButtonClicked(self):
+        if not self.collecting:
+            self.collectToggle.setText('Stop Collection')
+            self.collecting = True
+            self.dataArea.setPlainText("Waiting for data from the DU-640...\nIf stopped, the DU-640's send queue will be emptied before reading is terminated. Data collected will be trashed.")
+            self.reader = Reader()
+            self.reader.experimental_data.connect(self.onExperimentFinished)
+            self.reader.fail_state.connect(self.onExperimentFailed)
+            self.reader.start()
         else:
-            self.currently_collecting = False
-            try:
-                if ser is not None:
-                    ser.close()
-                    sender.setText('Start Collection')
-            except UnboundLocalError:
-                print('Tried to close an unopened serial connection')
+            self.collectToggle.setText('Start Collection')
 
-    def onClearOutputClicked(self, widget):
-        widget.setPlainText("")
+    def onExperimentFailed(self):
+        alert = QMessageBox()
+        alert.setText('Could not open serial port. Ensure /dev/ttyAMA0 exists and is available, then try again.')
+        alert.exec_()
 
-    def onWriteButtonClicked(self, widget):
+    def onExperimentFinished(self, data):
+        self.dataArea.setPlainText(data)
+        self.collecting = False
+        self.collectToggle.setText('Start Collection')
+
+    def onClearOutputClicked(self):
+        self.dataArea.setPlainText("")
+
+    def onWriteButtonClicked(self):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
         filename, _ = QFileDialog.getSaveFileName(
@@ -303,15 +316,15 @@ class MainWindow(QWidget, Open640):
         if filename:
             print("Saving to " + filename + ".txt...")
             f = open(filename + '.txt', 'w')
-            f.write(widget.toPlainText() + '\n')
+            f.write(self.dataArea.toPlainText() + '\n')
             f.close()
 
     def onSettingsButtonClicked(self):
         dlg = SettingsWindow()
         dlg.exec_()
 
-    def onCheckButtonClicked(self, output):
-        output.setPlainText(
+    def onCheckButtonClicked(self):
+        self.dataArea.setPlainText(
             "Current Settings:" +
             "\n\tPort: " + settings.value("serial/port") +
             "\n\tBaudrate: " + str(settings.value("serial/baudrate")) +
@@ -321,8 +334,6 @@ class MainWindow(QWidget, Open640):
             "\n\tFlow Control: " + str(settings.value("serial/xonxoff")) +
             "\n\nRemember that settings are persistent."
         )
-
-    currently_collecting = False
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

@@ -12,6 +12,7 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 
+
 class Open640:
     def __init__(self):
         # Only write a new settings file if one does not exist. In this case,
@@ -32,55 +33,57 @@ class Open640:
         settings.setValue("app/autoclear", False)
 
     def validateByteSize(self, bits):
-        if(bits == 5):
+        if (bits == 5):
             return serial.FIVEBITS
-        if(bits == 6):
+        if (bits == 6):
             return serial.SIXBITS
-        if(bits == 7):
+        if (bits == 7):
             return serial.SEVENBITS
-        if(bits == 8):
+        if (bits == 8):
             return serial.EIGHTBITS
         raise ValueError("Bytesize must be in the range [5, 8]")
 
     def validateParity(self, parity):
         parity = parity.lower()
-        if(parity == 'e' or parity == 'even'):
+        if (parity == 'e' or parity == 'even'):
             return serial.PARITY_EVEN
-        if(parity == 'o' or parity == 'odd'):
+        if (parity == 'o' or parity == 'odd'):
             return serial.PARITY_ODD
-        if(parity == 'm' or parity == 'mark'):
+        if (parity == 'm' or parity == 'mark'):
             return serial.PARITY_MARK
-        if(parity == 's' or parity == 'space'):
+        if (parity == 's' or parity == 'space'):
             return serial.PARITY_SPACE
-        if(parity == 'n' or parity == 'none'):
+        if (parity == 'n' or parity == 'none'):
             return serial.PARITY_NONE
         raise ValueError("Parity must be one of: even, odd, mark, space, or none")
 
     def validateParityTextBox(self, parity):
-        if(parity == 'E'):
+        if (parity == 'E'):
             return "Even"
-        if(parity == 'O'):
+        if (parity == 'O'):
             return "Odd"
-        if(parity == 'M'):
+        if (parity == 'M'):
             return "Mark"
-        if(parity == 'S'):
+        if (parity == 'S'):
             return "Space"
-        if(parity == 'N'):
+        if (parity == 'N'):
             return "None"
 
     def validateStopBits(self, bits):
-        if(bits == 1):
+        if (bits == 1):
             return serial.STOPBITS_ONE
-        if(bits == 1.5):
+        if (bits == 1.5):
             return serial.STOPBITS_ONE_POINT_FIVE
-        if(bits == 2):
+        if (bits == 2):
             return serial.STOPBITS_TWO
         raise ValueError("Stopbits must be 1, 1.5, or 2. We don't know what 1.5 means either.")
 
-class Reader(QThread):
 
+class Reader(QThread):
     experimental_data = pyqtSignal(object)
     fail_state = pyqtSignal(object)
+    data_live = pyqtSignal(object)
+    success_state = pyqtSignal(object)
     ser = None
 
     def __init__(self):
@@ -89,20 +92,26 @@ class Reader(QThread):
     @pyqtSlot()
     def run(self):
         print("Thread start.")
-        self.collectData()
+        self.LiveUpdateTest()
+        self.success_state.emit(None)
         print("Thread end.")
+
+    def LiveUpdateTest(self):
+        for character in "This is the test string for the live updating data feature.":
+            self.data_live.emit(character)
+            time.sleep(0.05)
 
     def collectData(self):
         try:
             print("Entered collection method.")
             # For the purposes of testing multithreading, these are fixed in place.
             self.ser = serial.Serial(
-                    "/dev/ttyAMA0",
-                    baudrate = 9600,
-                    bytesize = serial.SEVENBITS,
-                    parity = serial.PARITY_EVEN,
-                    stopbits = serial.STOPBITS_ONE,
-                    xonxoff = True)
+                "/dev/ttyAMA0",
+                baudrate=9600,
+                bytesize=serial.SEVENBITS,
+                parity=serial.PARITY_EVEN,
+                stopbits=serial.STOPBITS_ONE,
+                xonxoff=True)
             # Dodgy reimplementation of do-while by copying code
             raw_data = self.ser.read(1)
             data_str = raw_data.decode('ascii')
@@ -110,7 +119,7 @@ class Reader(QThread):
             print("Waiting: " + str(self.ser.inWaiting()))
             time.sleep(0.01)
             while True:
-                if(self.ser.inWaiting() > 0):
+                if (self.ser.inWaiting() > 0):
                     raw_data = self.ser.read(1)
                     data_str = data_str + raw_data.decode('ascii')
                     print("Waiting: " + str(self.ser.inWaiting()))
@@ -128,17 +137,18 @@ class Reader(QThread):
             # Ensure the DU-640's outgoing queue is empty so that it doesn't
             # jam itself.
             while (self.ser.inWaiting() > 0):
-                    self.ser.read(1)
+                self.ser.read(1)
             ser.close()
         self.threadactive = False
         self.wait()
+
 
 class SettingsWindow(QDialog, Open640):
     def __init__(self):
         super(SettingsWindow, self).__init__()
         self.width = 400
         self.height = 300
-        self.setMinimumSize(QSize(320,240))
+        self.setMinimumSize(QSize(320, 240))
         self.initSettingsWindow()
 
     def initSettingsWindow(self):
@@ -152,7 +162,6 @@ class SettingsWindow(QDialog, Open640):
         self.byteLabel = QLabel("Byte Size")
         self.parityLabel = QLabel("Parity")
         self.stopLabel = QLabel("Stop Bits")
-
 
         self.portBox = QLineEdit(self)
         self.portBox.setText(settings.value("serial/port"))
@@ -168,7 +177,8 @@ class SettingsWindow(QDialog, Open640):
 
         self.parityBox = QLineEdit(self)
         self.parityBox.setText(self.validateParityTextBox(str(settings.value("serial/parity"))))
-        self.parityBox.setToolTip("Parity checking type. Can be even, odd, or none. This must match the setting on the DU-640.")
+        self.parityBox.setToolTip(
+            "Parity checking type. Can be even, odd, or none. This must match the setting on the DU-640.")
 
         self.stopBox = QLineEdit(self)
         self.stopBox.setText(str(settings.value("serial/stopbits")))
@@ -176,11 +186,12 @@ class SettingsWindow(QDialog, Open640):
 
         self.fcButton = QCheckBox(self)
         self.fcButton.setText("Software Flow Control")
-        self.fcButton.setChecked(True if settings.value("serial/xonxoff")=='true' else False)
-        self.fcButton.setToolTip("Enable or disable flow control to control DU-640 from a computer. This must match the setting on the DU-640.")
+        self.fcButton.setChecked(True if settings.value("serial/xonxoff") == 'true' else False)
+        self.fcButton.setToolTip(
+            "Enable or disable flow control to control DU-640 from a computer. This must match the setting on the DU-640.")
 
         self.autoclearButton = QCheckBox(self)
-        self.autoclearButton.setChecked(True if settings.value("app/autoclear")=='true' else False)
+        self.autoclearButton.setChecked(True if settings.value("app/autoclear") == 'true' else False)
         self.autoclearButton.setText("Autoclear output on save")
 
         self.saveButton = QPushButton('Save Changes')
@@ -194,11 +205,11 @@ class SettingsWindow(QDialog, Open640):
         row2 = [self.portBox, self.baudrateBox, self.byteBox, self.parityBox]
         row4 = [self.stopBox, self.fcButton, self.autoclearButton]
         for index, row in enumerate([row1, row2]):
-            for entry in zip(row, range(0,4)):
+            for entry in zip(row, range(0, 4)):
                 layout.addWidget(entry[0], index, entry[1])
         layout.addWidget(self.stopLabel, 2, 0)
-        for entry in zip(row4, range(0,3)):
-                layout.addWidget(entry[0], 3, entry[1])
+        for entry in zip(row4, range(0, 3)):
+            layout.addWidget(entry[0], 3, entry[1])
         layout.addWidget(self.closeButton, 4, 2)
         layout.addWidget(self.saveButton, 4, 3)
 
@@ -217,7 +228,9 @@ class SettingsWindow(QDialog, Open640):
                 raise ValueError("Baudrate must be one of 4800, 9600, 19200")
         except ValueError as e:
             alert = QMessageBox()
-            alert.setText("There is something wrong with your settings, and they have not yet been committed.\n\nError: " + str(e))
+            alert.setText(
+                "There is something wrong with your settings, and they have not yet been committed.\n\nError: " + str(
+                    e))
             alert.exec_()
             return
 
@@ -232,6 +245,7 @@ class SettingsWindow(QDialog, Open640):
         settings.setValue("app/autoclear", self.autoclearButton.isChecked())
         self.close()
 
+
 class MainWindow(QWidget, Open640):
     def __init__(self):
         super(MainWindow, self).__init__()
@@ -239,7 +253,7 @@ class MainWindow(QWidget, Open640):
         self.title = 'Open640'
         self.width = 800
         self.height = 600
-        self.setMinimumSize(QSize(320,240))
+        self.setMinimumSize(QSize(320, 240))
         self.initMainWindow()
 
     def initMainWindow(self):
@@ -271,7 +285,6 @@ class MainWindow(QWidget, Open640):
         self.writeButton.clicked.connect(lambda: self.onWriteButtonClicked())
         self.clearButton.clicked.connect(lambda: self.onClearOutputClicked())
 
-
         layout.addWidget(self.dataArea, 0, 0, 1, 0)
         layout.addWidget(self.settingsButton, 1, 0)
         layout.addWidget(self.checkSettingsButton, 1, 1)
@@ -285,12 +298,17 @@ class MainWindow(QWidget, Open640):
         if not self.collecting:
             self.collectToggle.setText('Stop Collection')
             self.collecting = True
-            self.dataArea.setPlainText("Waiting for data from the DU-640...\nIf stopped, the DU-640's send queue will be emptied before reading is terminated. Data collected will be trashed.")
+            self.dataArea.setPlainText(
+                "Waiting for data from the DU-640...\nIf stopped, the DU-640's send queue will be emptied before reading is terminated. Data collected will be trashed.")
+            self.warningCleared = False
             self.reader = Reader()
             self.reader.experimental_data.connect(self.onExperimentFinished)
+            self.reader.data_live.connect(self.onExperimentUpdate)
+            self.reader.success_state.connect(self.onExperimentSuccess)
             self.reader.fail_state.connect(self.onExperimentFailed)
             self.reader.start()
         else:
+            # Kill the currently running thread
             alert = QMessageBox()
             alert.setText('Won\'t start another read thread until current thread finishes.')
             alert.exec_()
@@ -302,8 +320,18 @@ class MainWindow(QWidget, Open640):
         alert.setText('Could not open serial port. Ensure /dev/ttyAMA0 exists and is available, then try again.')
         alert.exec_()
 
+    def onExperimentUpdate(self, data):
+        if not self.warningCleared:
+            self.dataArea.setPlainText("")
+            self.warningCleared = True
+        self.dataArea.setPlainText(self.dataArea.toPlainText() + data)
+
     def onExperimentFinished(self, data):
         self.dataArea.setPlainText(data)
+        self.collecting = False
+        self.collectToggle.setText('Start Collection')
+
+    def onExperimentSuccess(self):
         self.collecting = False
         self.collectToggle.setText('Start Collection')
 
@@ -335,11 +363,13 @@ class MainWindow(QWidget, Open640):
             "\n\tPort: " + settings.value("serial/port") +
             "\n\tBaudrate: " + str(settings.value("serial/baudrate")) +
             "\n\tBytesize: " + str(settings.value("serial/bytesize")) + " bits"
-            "\n\tParity: " + settings.value("serial/parity") +
+                                                                        "\n\tParity: " + settings.value(
+                "serial/parity") +
             "\n\tStop Bits: " + str(settings.value("serial/stopbits")) +
             "\n\tFlow Control: " + str(settings.value("serial/xonxoff")) +
             "\n\nRemember that settings are persistent."
         )
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

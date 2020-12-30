@@ -4,6 +4,7 @@ import sys
 
 from PyQt5.QtWidgets import QWidget, QGridLayout, QPushButton, QMessageBox
 from PyQt5.QtWidgets import QApplication, QPlainTextEdit, QFileDialog
+from PyQt5.QtWidgets import QLineEdit
 from PyQt5.QtGui import QTextCursor
 from PyQt5.QtCore import QSize
 
@@ -55,6 +56,10 @@ class MainWindow(QWidget, Open640):
         self.checkSettingsButton.clicked.connect(
             lambda: self.onCheckButtonClicked()
         )
+
+        self.repetitionsBox = QLineEdit(self)
+        self.repetitionsBox.setPlaceholderText("Experiments to Batch")
+
         self.collectToggle.clicked.connect(lambda: self.onStartButtonClicked())
         self.writeButton.clicked.connect(lambda: self.onWriteButtonClicked())
         self.clearButton.clicked.connect(lambda: self.onClearOutputClicked())
@@ -63,8 +68,9 @@ class MainWindow(QWidget, Open640):
         layout.addWidget(self.settingsButton, 1, 0)
         layout.addWidget(self.checkSettingsButton, 1, 1)
         layout.addWidget(self.clearButton, 1, 2)
-        layout.addWidget(self.collectToggle, 1, 3)
-        layout.addWidget(self.writeButton, 1, 4)
+        layout.addWidget(self.repetitionsBox, 1, 3)
+        layout.addWidget(self.collectToggle, 1, 4)
+        layout.addWidget(self.writeButton, 1, 5)
 
         self.show()
 

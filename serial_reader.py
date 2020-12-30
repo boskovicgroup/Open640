@@ -30,7 +30,8 @@ class Reader(QThread):
     def collectData(self):
         try:
             print("Entered collection method.")
-            # For the purposes of testing multithreading, these are fixed in place.
+            # For the purposes of testing multithreading,
+            # these are fixed in place.
             self.ser = serial.Serial(
                 "/dev/ttyAMA0",
                 baudrate=9600,

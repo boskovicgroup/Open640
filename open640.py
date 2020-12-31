@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 import sys
 
 from PyQt5.QtWidgets import QWidget, QGridLayout, QPushButton, QMessageBox
@@ -10,10 +9,9 @@ from PyQt5.QtCore import QSize
 
 from settings_class import SettingsWindow
 from serial_reader import Reader
-from open640_class import Open640
 
 
-class MainWindow(QWidget, Open640):
+class MainWindow(QWidget):
     def __init__(self):
         super(MainWindow, self).__init__()
         self.collecting = False
@@ -22,6 +20,7 @@ class MainWindow(QWidget, Open640):
         self.height = 600
         self.setMinimumSize(QSize(320, 240))
         self.initMainWindow()
+        self.settings = SettingsWindow()
 
     def initMainWindow(self):
         self.setWindowTitle(self.title)

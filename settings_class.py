@@ -1,16 +1,36 @@
-from PyQt5.QtCore import QSize
+import serial
+import sys
+from PyQt5.QtCore import QSize, QSettings
 from PyQt5.QtWidgets import QDialog, QLabel, QLineEdit, QPushButton
 from PyQt5.QtWidgets import QGridLayout, QMessageBox, QCheckBox
-from open640_class import Open640
 
 
-class SettingsWindow(QDialog, Open640):
+class SettingsWindow(QDialog):
     def __init__(self):
         super(SettingsWindow, self).__init__()
+        orgName = None
+        if sys.platform.startswith('darwin'):
+            orgName = "boskoviclab.ku.edu"
+        else:
+            orgName = "BoskovicGroup"
+        self.settings = QSettings(orgName, "Open640")
+        if not self.settings.contains("serial/xonxoff"):
+            self.registerDefaultSettings()
         self.width = 400
         self.height = 300
         self.setMinimumSize(QSize(320, 240))
         self.initSettingsWindow()
+
+    def registerDefaultSettings(self):
+        self.settings.beginGroup("serial")
+        self.settings.setValue("port", "/dev/ttyAMA0")
+        self.settings.setValue("baudrate", 9600)
+        self.settings.setValue("bytesize", serial.SEVENBITS)
+        self.settings.setValue("parity", serial.PARITY_EVEN)
+        self.settings.setValue("stopbits", serial.STOPBITS_ONE)
+        self.settings.setValue("xonxoff", True)
+        self.settings.endGroup()
+        self.settings.setValue("app/autoclear", False)
 
     def initSettingsWindow(self):
         self.setWindowTitle('Open640 - Settings')
@@ -89,8 +109,6 @@ class SettingsWindow(QDialog, Open640):
         layout.addWidget(self.closeButton, 4, 2)
         layout.addWidget(self.saveButton, 4, 3)
 
-        self.show()
-
     def onCloseButtonClicked(self):
         self.close()
 
@@ -123,3 +141,62 @@ class SettingsWindow(QDialog, Open640):
             "app/autoclear", self.autoclearButton.isChecked()
         )
         self.close()
+
+    def validateByteSize(self, bits):
+        if (bits == 5):
+            return serial.FIVEBITS
+        if (bits == 6):
+            return serial.SIXBITS
+        if (bits == 7):
+            return serial.SEVENBITS
+        if (bits == 8):
+            return serial.EIGHTBITS
+        raise ValueError("Bytesize must be in the range [5, 8]")
+
+    def validateParity(self, parity):
+        parity = parity.lower()
+        if (parity == 'e' or parity == 'even'):
+            return serial.PARITY_EVEN
+        if (parity == 'o' or parity == 'odd'):
+            return serial.PARITY_ODD
+        if (parity == 'm' or parity == 'mark'):
+            return serial.PARITY_MARK
+        if (parity == 's' or parity == 'space'):
+            return serial.PARITY_SPACE
+        if (parity == 'n' or parity == 'none'):
+            return serial.PARITY_NONE
+        raise ValueError("Parity must be one of:"
+                         + "even, odd, mark, space, or none")
+
+    def validateParityTextBox(self, parity):
+        if (parity == 'E'):
+            return "Even"
+        if (parity == 'O'):
+            return "Odd"
+        if (parity == 'M'):
+            return "Mark"
+        if (parity == 'S'):
+            return "Space"
+        if (parity == 'N'):
+            return "None"
+
+    def validateStopBits(self, bits):
+        if (bits == 1):
+            return serial.STOPBITS_ONE
+        if (bits == 1.5):
+            return serial.STOPBITS_ONE_POINT_FIVE
+        if (bits == 2):
+            return serial.STOPBITS_TWO
+        raise ValueError("Stopbits must be 1, 1.5, or 2."
+                         + "We don't know what 1.5 means either.")
+
+#                "Current Settings:"
+#            + "\n\tPort: " + self.settings.value("serial/port")
+#            + "\n\tBaudrate: " + str(self.settings.value("serial/baudrate"))
+#            + "\n\tBytesize: "
+#            + str(self.settings.value("serial/bytesize")) + " bits"
+#            + "\n\tParity: " + self.settings.value("serial/parity")
+#            + "\n\tStop Bits: " + str(self.settings.value("serial/stopbits"))
+#            + "\n\tFlow Control: " + str(self.settings.value("serial/xonxoff"))
+#            + "\n\nRemember that settings are persistent."
+#        )

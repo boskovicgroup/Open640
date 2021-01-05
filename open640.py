@@ -3,7 +3,6 @@ import sys
 
 from PyQt5.QtWidgets import QWidget, QGridLayout, QPushButton, QMessageBox
 from PyQt5.QtWidgets import QApplication, QPlainTextEdit, QFileDialog
-from PyQt5.QtWidgets import QLineEdit
 from PyQt5.QtGui import QTextCursor
 from PyQt5.QtCore import QSize
 

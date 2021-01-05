@@ -20,7 +20,10 @@ class MainWindow(QWidget):
         self.height = 600
         self.setMinimumSize(QSize(320, 240))
         self.initMainWindow()
+
         self.settings = SettingsWindow()
+        self.settings.current_settings.connect(self.showSettings)
+
         self.batch_reader = BatchWindow()
 
     def initMainWindow(self):
@@ -150,11 +153,14 @@ class MainWindow(QWidget):
             f.write(self.dataArea.toPlainText() + '\n')
             f.close()
 
+    def showSettings(self, data):
+        self.dataArea.setPlainText(data)
+
     def onSettingsButtonClicked(self):
         self.settings.show()
 
-    def onCheckButtonClicked(self, data):
-        self.dataArea.setPlainText(data)
+    def onCheckButtonClicked(self):
+        self.settings.emitCurrentSettings()
 
 
 if __name__ == '__main__':

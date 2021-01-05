@@ -1,11 +1,13 @@
 import serial
 import sys
-from PyQt5.QtCore import QSize, QSettings
+from PyQt5.QtCore import QSize, QSettings, pyqtSignal
 from PyQt5.QtWidgets import QDialog, QLabel, QLineEdit, QPushButton
 from PyQt5.QtWidgets import QGridLayout, QMessageBox, QCheckBox
 
 
 class SettingsWindow(QDialog):
+    current_settings = pyqtSignal(object)
+
     def __init__(self):
         super(SettingsWindow, self).__init__()
         orgName = None
@@ -20,6 +22,19 @@ class SettingsWindow(QDialog):
         self.height = 300
         self.setMinimumSize(QSize(320, 240))
         self.initSettingsWindow()
+
+    def emitCurrentSettings(self):
+        self.current_settings.emit(
+            "Current Settings:"
+            + "\n\tPort: " + self.settings.value("serial/port")
+            + "\n\tBaudrate: " + str(self.settings.value("serial/baudrate"))
+            + "\n\tBytesize: "
+            + str(self.settings.value("serial/bytesize")) + " bits"
+            + "\n\tParity: " + self.settings.value("serial/parity")
+            + "\n\tStop Bits: " + str(self.settings.value("serial/stopbits"))
+            + "\n\tFlow Control: " + str(self.settings.value("serial/xonxoff"))
+            + "\n\nRemember that settings are persistent."
+        )
 
     def registerDefaultSettings(self):
         self.settings.beginGroup("serial")
@@ -189,14 +204,3 @@ class SettingsWindow(QDialog):
             return serial.STOPBITS_TWO
         raise ValueError("Stopbits must be 1, 1.5, or 2."
                          + "We don't know what 1.5 means either.")
-
-#                "Current Settings:"
-#            + "\n\tPort: " + self.settings.value("serial/port")
-#            + "\n\tBaudrate: " + str(self.settings.value("serial/baudrate"))
-#            + "\n\tBytesize: "
-#            + str(self.settings.value("serial/bytesize")) + " bits"
-#            + "\n\tParity: " + self.settings.value("serial/parity")
-#            + "\n\tStop Bits: " + str(self.settings.value("serial/stopbits"))
-#            + "\n\tFlow Control: " + str(self.settings.value("serial/xonxoff"))
-#            + "\n\nRemember that settings are persistent."
-#        )

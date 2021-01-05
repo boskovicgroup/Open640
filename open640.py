@@ -8,6 +8,7 @@ from PyQt5.QtCore import QSize
 
 from settings_class import SettingsWindow
 from serial_reader import Reader
+from batch_reader import BatchWindow
 
 
 class MainWindow(QWidget):
@@ -20,6 +21,7 @@ class MainWindow(QWidget):
         self.setMinimumSize(QSize(320, 240))
         self.initMainWindow()
         self.settings = SettingsWindow()
+        self.batch_reader = BatchWindow()
 
     def initMainWindow(self):
         self.setWindowTitle(self.title)
@@ -55,22 +57,30 @@ class MainWindow(QWidget):
             lambda: self.onCheckButtonClicked()
         )
 
-        self.repetitionsBox = QLineEdit(self)
-        self.repetitionsBox.setPlaceholderText("Experiments to Batch")
+        self.repetitionsButton = QPushButton('Batch Collect', self)
+        self.repetitionsButton.setToolTip(
+            'Collect several samples in a row.'
+        )
 
         self.collectToggle.clicked.connect(lambda: self.onStartButtonClicked())
         self.writeButton.clicked.connect(lambda: self.onWriteButtonClicked())
         self.clearButton.clicked.connect(lambda: self.onClearOutputClicked())
+        self.repetitionsButton.clicked.connect(
+            lambda: self.onBatchCollectClicked()
+        )
 
         layout.addWidget(self.dataArea, 0, 0, 1, 0)
         layout.addWidget(self.settingsButton, 1, 0)
         layout.addWidget(self.checkSettingsButton, 1, 1)
         layout.addWidget(self.clearButton, 1, 2)
-        layout.addWidget(self.repetitionsBox, 1, 3)
+        layout.addWidget(self.repetitionsButton, 1, 3)
         layout.addWidget(self.collectToggle, 1, 4)
         layout.addWidget(self.writeButton, 1, 5)
 
         self.show()
+
+    def onBatchCollectClicked(self):
+        self.batch_reader.show()
 
     def onStartButtonClicked(self):
         if not self.collecting:
@@ -141,21 +151,10 @@ class MainWindow(QWidget):
             f.close()
 
     def onSettingsButtonClicked(self):
-        dlg = SettingsWindow()
-        dlg.exec_()
+        self.settings.show()
 
-    def onCheckButtonClicked(self):
-        self.dataArea.setPlainText(
-            "Current Settings:"
-            + "\n\tPort: " + self.settings.value("serial/port")
-            + "\n\tBaudrate: " + str(self.settings.value("serial/baudrate"))
-            + "\n\tBytesize: "
-            + str(self.settings.value("serial/bytesize")) + " bits"
-            + "\n\tParity: " + self.settings.value("serial/parity")
-            + "\n\tStop Bits: " + str(self.settings.value("serial/stopbits"))
-            + "\n\tFlow Control: " + str(self.settings.value("serial/xonxoff"))
-            + "\n\nRemember that settings are persistent."
-        )
+    def onCheckButtonClicked(self, data):
+        self.dataArea.setPlainText(data)
 
 
 if __name__ == '__main__':

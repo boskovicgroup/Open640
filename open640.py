@@ -19,12 +19,9 @@ class MainWindow(QWidget):
         self.width = 800
         self.height = 600
         self.setMinimumSize(QSize(320, 240))
-        self.initMainWindow()
-
         self.settings = SettingsWindow()
-        self.settings.current_settings.connect(self.showSettings)
-
         self.batch_reader = BatchWindow()
+        self.initMainWindow()
 
     def initMainWindow(self):
         self.setWindowTitle(self.title)
@@ -65,6 +62,11 @@ class MainWindow(QWidget):
             'Collect several samples in a row.'
         )
 
+        self.settings.current_settings.connect(self.showSettings)
+        self.batch_reader.next_clicked.connect(
+            self.onBatchCollectorStartOrNextClicked()
+        )
+
         self.collectToggle.clicked.connect(lambda: self.onStartButtonClicked())
         self.writeButton.clicked.connect(lambda: self.onWriteButtonClicked())
         self.clearButton.clicked.connect(lambda: self.onClearOutputClicked())
@@ -84,6 +86,10 @@ class MainWindow(QWidget):
 
     def onBatchCollectClicked(self):
         self.batch_reader.show()
+
+    def onBatchCollectorStartOrNextClicked(self):
+        # self.onStartButtonClicked()
+        pass
 
     def onStartButtonClicked(self):
         if not self.collecting:

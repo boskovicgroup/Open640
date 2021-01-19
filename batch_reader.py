@@ -1,8 +1,10 @@
 from PyQt5.QtWidgets import QWidget, QGridLayout, QPushButton
-from PyQt5.QtCore import QSize
+from PyQt5.QtCore import QSize, pyqtSignal
 
 
 class BatchWindow(QWidget):
+    next_clicked = pyqtSignal(object)
+
     def __init__(self):
         super(BatchWindow, self).__init__()
         self.title = "Open640 - Batch Collector"
